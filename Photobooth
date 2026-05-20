@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Booth Juliefy Lens</title>
+    
+    <!-- React & ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide-react@0.359.0/dist/umd/lucide-react.min.js"></script>
+    
+    <!-- Babel JIT Compiler for JSX processing in older/static environments -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Elegant Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Space+Grotesk:wght@300..700&family=JetBrains+Mono:wght@300..700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: "Space Grotesk", "Inter", sans-serif;
+            background-color: #1c1917; /* stone-900 */
+        }
+        .serif-font {
+            font-family: "Playfair Display", Georgia, serif;
+        }
+        .mono-font {
+            font-family: "JetBrains Mono", monospace;
+        }
+        
+        /* 3D Button Bevel Effects */
+        .btn-red-3d {
+            background: linear-gradient(180deg, #ef4444 0%, #b91c1c 100%);
+            border-bottom: 5px solid #7f1d1d;
+            transition: all 0.1s ease;
+        }
+        .btn-red-3d:active {
+            transform: translateY(3px);
+            border-bottom: 2px solid #7f1d1d;
+        }
+        
+        .btn-cyan-3d {
+            background: linear-gradient(180deg, #06b6d4 0%, #0891b2 100%);
+            border-bottom: 5px solid #164e63;
+            transition: all 0.1s ease;
+        }
+        .btn-cyan-3d:active {
+            transform: translateY(3px);
+            border-bottom: 2px solid #164e63;
+        }
+        
+        .btn-gray-3d {
+            background: linear-gradient(180deg, #4b5563 0%, #374151 100%);
+            border-bottom: 5px solid #111827;
+            transition: all 0.1s ease;
+        }
+        .btn-gray-3d:active {
+            transform: translateY(3px);
+            border-bottom: 2px solid #111827;
+        }
+        
+        /* Repetitive theatrical red velvet curtain background pattern */
+        .bg-velvet {
+            background: repeating-linear-gradient(
+                90deg,
+                #5f0404 0px,
+                #5f0404 40px,
+                #4a0303 40px,
+                #4a0303 80px,
+                #3c0202 80px,
+                #3c0202 120px,
+                #4a0303 120px,
+                #4a0303 160px
+            );
+        }
+        
+        /* Pastel sky / amber elements */
+        .bg-sky-teal {
+            background: linear-gradient(135deg, #a7f3d0 0%, #60a5fa 100%);
+        }
+        
+        /* Custom scrollbar helper */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(250, 204, 21, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(250, 204, 21, 0.6);
+        }
+    </style>
+</head>
+<body class="text-stone-100 select-none antialiased selection:bg-amber-850">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Safe LucideReact destructuring wrapper. Falls back to emoji indicators if CDN fails or is blocked.
+        const getLucideIcon = (name, fallbackChar = '') => {
+            if (typeof LucideReact !== 'undefined' && LucideReact[name]) {
+                return LucideReact[name];
+            }
+            return (props) => (
+                <span className={`inline-flex items-center justify-center font-mono font-bold ${props.className || ''}`} style={{ fontSize: props.size ? props.size - 2 : 12 }}>
+                    {fallbackChar || name.slice(0, 2).toUpperCase()}
+                </span>
+            );
+        };
+
+        const Camera = getLucideIcon('Camera', '📷');
+        const Download = getLucideIcon('Download', '⬇️');
+        const Trash2 = getLucideIcon('Trash2', '🗑️');
+        const User = getLucideIcon('User', '👤');
+        const HelpCircle = getLucideIcon('HelpCircle', '❓');
+        const Info = getLucideIcon('Info', 'ℹ️');
+        const LogOut = getLucideIcon('LogOut', '🚪');
+        const ImageIcon = getLucideIcon('Image', '🖼️');
+        const Check = getLucideIcon('Check', '✓');
+        const CheckSquare = getLucideIcon('CheckSquare', '☑️');
+        const Square = getLucideIcon('Square', '⬜');
+        const RefreshCw = getLucideIcon('RefreshCw', '🔄');
+        const Sliders = getLucideIcon('Sliders', '⚙️');
+        const ZoomIn = getLucideIcon('ZoomIn', '➕');
+        const ZoomOut = getLucideIcon('ZoomOut', '➖');
+        const Move = getLucideIcon('Move', '✥');
+        const Settings = getLucideIcon('Settings', '🛠️');
+        const ArrowRight = getLucideIcon('ArrowRight', '➡️');
+        const ExternalLink = getLucideIcon('ExternalLink', '🔗');
+
+        // Default template layout data with standard percentage coordinates
+        const DEFAULT_TEMPLATES = [
+            {
+                id: 'temp1',
+                name: 'Template 1 (Photostrip 4-Foto)',
+                url: 'https://lh3.googleusercontent.com/d/1CNbOJ8qMWIx1vY2mus5v7MoWHYtrjsXW',
+                slotsCount: 4,
+                layoutType: 'vertical-4',
+                slots: [
+                    { x: 10, y: 5, width: 80, height: 20 },
+                    { x: 10, y: 28, width: 80, height: 20 },
+                    { x: 10, y: 51, width: 80, height: 20 },
+                    { x: 10, y: 74, width: 80, height: 20 },
+                ]
+            },
+            {
+                id: 'temp2',
+                name: 'Template 2 (Grid 2x2 Classic)',
+                url: 'https://lh3.googleusercontent.com/d/1ZJn71yIVb1Pm25u6GxokP-W8gq5kp5xV',
+                slotsCount: 4,
+                layoutType: 'grid-2x2',
+                slots: [
+                    { x: 8, y: 8, width: 40, height: 38 },
+                    { x: 52, y: 8, width: 40, height: 38 },
+                    { x: 8, y: 52, width: 40, height: 38 },
+                    { x: 52, y: 52, width: 40, height: 38 },
+                ]
+            },
+            {
+                id: 'temp3',
+                name: 'Template 3 (Strip 3-Foto)',
+                url: 'https://lh3.googleusercontent.com/d/19tII5DnQTSuOOxpgFE3dsi0I7KmByXF7',
+                slotsCount: 3,
+                layoutType: 'vertical-3',
+                slots: [
+                    { x: 10, y: 8, width: 80, height: 26 },
+                    { x: 10, y: 37, width: 80, height: 26 },
+                    { x: 10, y: 66, width: 80, height: 26 },
+                ]
+            },
+            {
+                id: 'temp4',
+                name: 'Template 4 (Duo Portrait)',
+                url: 'https://lh3.googleusercontent.com/d/1reqV1ywp4pl5QCu6ziNVcIdw-BXS5ATH',
+                slotsCount: 2,
+                layoutType: 'vertical-2',
+                slots: [
+                    { x: 10, y: 10, width: 80, height: 38 },
+                    { x: 10, y: 52, width: 80, height: 38 },
+                ]
+            },
+            {
+                id: 'temp5',
+                name: 'Template 5 (Grid 2x2 Soft)',
+                url: 'https://lh3.googleusercontent.com/d/1g6T1LcxswEE5ybdciNScbfzHd9xzjSju',
+                slotsCount: 4,
+                layoutType: 'grid-2x2',
+                slots: [
+                    { x: 10, y: 8, width: 38, height: 36 },
+                    { x: 52, y: 8, width: 38, height: 36 },
+                    { x: 10, y: 48, width: 38, height: 36 },
+                    { x: 52, y: 48, width: 38, height: 36 },
+                ]
+            }
+        ];
+
+        function App() {
+            // General Screen navigation: 'login' | 'booth' | 'gallery' | 'about' | 'help'
+            const [currentPage, setCurrentPage] = useState('login');
+            
+            // Subtle sheet toggler on login screen
+            const [showSecretSettings, setShowSecretSettings] = useState(false);
+            
+            // User states
+            const [userName, setUserName] = useState(() => localStorage.getItem('user_name') || '');
+            const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('user_name'));
+            const [sheetsUrl, setSheetsUrl] = useState(() => localStorage.getItem('sheets_url') || 'https://script.google.com/macros/s/AKfycby7V-MizGfU4fL8A9vQ3vjUHe_YJHe0eD-hQo9Vw-8b-8vFv86OPr_A_ex6G8E1G6Vz/exec');
+            
+            // Photo Database (Saved locally in browser client for portability)
+            const [galleryPhotos, setGalleryPhotos] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('gallery_photos');
+                    return saved ? JSON.parse(saved) : [];
+                } catch {
+                    return [];
+                }
+            });
+
+            // Active templates states
+            const [templates, setTemplates] = useState(DEFAULT_TEMPLATES);
+            const [selectedTemplate, setSelectedTemplate] = useState(DEFAULT_TEMPLATES[0]);
+            
+            // Camera Stream States
+            const [cameraActive, setCameraActive] = useState(false);
+            const [cameraStream, setCameraStream] = useState(null);
+            const [cameraError, setCameraError] = useState(null);
+            const [availableDevices, setAvailableDevices] = useState([]);
+            const [selectedCameraId, setSelectedCameraId] = useState('');
+            
+            // Shoot configuration state
+            const [timerDuration, setTimerDuration] = useState(0); // 0 = off, 3, 5, 10
+            const [countdown, setCountdown] = useState(-1);
+            const [showFlash, setShowFlash] = useState(false);
+            const [isShootingSession, setIsShootingSession] = useState(false);
+            
+            // Placements database tracker (coordinates and zooms inside slots)
+            const [sessionPlacements, setSessionPlacements] = useState(() => 
+                Array(4).fill(null).map(() => ({ photoId: null, scale: 1, xOffset: 0, yOffset: 0, rotation: 0 }))
+            );
+            const [activeSlotIndex, setActiveSlotIndex] = useState(0);
+            
+            // Gallery selection filter mode
+            const [galleryMode, setGalleryMode] = useState('individual');
+            const [editTargetTemplate, setEditTargetTemplate] = useState(DEFAULT_TEMPLATES[0]);
+            const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+            
+            // Refs
+            const videoRef = useRef(null);
+            const canvasRef = useRef(null);
+
+            // Sync gallery to local storage when changed
+            useEffect(() => {
+                localStorage.setItem('gallery_photos', JSON.stringify(galleryPhotos));
+            }, [galleryPhotos]);
+
+            // Sync template sizes when template switches
+            useEffect(() => {
+                setSessionPlacements(
+                    Array(selectedTemplate.slotsCount).fill(null).map((_, idx) => {
+                        return sessionPlacements[idx] || { photoId: null, scale: 1, xOffset: 0, yOffset: 0, rotation: 0 };
+                    })
+                );
+                setActiveSlotIndex(0);
+            }, [selectedTemplate]);
+
+            // Visibility tracker: turn off camera completely when backgrounded!
+            useEffect(() => {
+                const handleVisibility = () => {
+                    if (document.hidden) {
+                        stopCamera();
+                    } else if (currentPage === 'booth' && isLoggedIn) {
+                        startCamera(selectedCameraId);
+                    }
+                };
+                document.addEventListener('visibilitychange', handleVisibility);
+                return () => document.removeEventListener('visibilitychange', handleVisibility);
+            }, [currentPage, isLoggedIn, selectedCameraId]);
+
+            // Manage camera streams beautifully
+            const stopCamera = () => {
+                if (cameraStream) {
+                    cameraStream.getTracks().forEach(track => track.stop());
+                    setCameraStream(null);
+                }
+                if (videoRef.current) {
+                    videoRef.current.srcObject = null;
+                }
+                setCameraActive(false);
+            };
+
+            const startCamera = async (deviceId) => {
+                stopCamera();
+                try {
+                    setCameraError(null);
+                    const constraints = {
+                        video: {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            deviceId: deviceId ? { exact: deviceId } : undefined
+                        }
+                    };
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    setCameraStream(stream);
+                    setCameraActive(true);
+                    
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                        videoRef.current.play().catch(e => console.error("Play error:", e));
+                    }
+
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videos = devices.filter(d => d.kind === 'videoinput');
+                    setAvailableDevices(videos);
+                    if (!selectedCameraId && videos.length > 0) {
+                        setSelectedCameraId(videos[0].deviceId);
+                    }
+                } catch (err) {
+                    console.error("Camera access failed", err);
+                    const errMsg = err?.message || err?.name || String(err);
+                    let localizedError = "Akses kamera dilarang atau diabaikan oleh browser Anda.";
+                    if (errMsg.toLowerCase().includes("permission") || errMsg.toLowerCase().includes("dismiss") || errMsg.toLowerCase().includes("allow") || err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") {
+                        localizedError = "Izin kamera ditolak atau ditutup (Permission dismissed). Silakan atur izin akses kamera ke 'Izinkan' di bar alamat browser Anda.";
+                    } else if (errMsg.toLowerCase().includes("notfound") || err?.name === "NotFoundError") {
+                        localizedError = "Tidak ada kamera yang ditemukan pada perangkat Anda.";
+                    }
+                    setCameraError(`${localizedError} (Sistem: ${errMsg})`);
+                    setCameraActive(false);
+                }
+            };
+
+            // Manage booth background stream activation
+            useEffect(() => {
+                if (currentPage === 'booth' && isLoggedIn) {
+                    startCamera(selectedCameraId);
+                } else {
+                    stopCamera();
+                }
+                return () => stopCamera();
+            }, [currentPage, isLoggedIn]);
+
+            // Keep videoRef stream in sync with active camera stream when elements mount
+            React.useEffect(() => {
+                if (videoRef.current && cameraStream) {
+                    if (videoRef.current.srcObject !== cameraStream) {
+                        videoRef.current.srcObject = cameraStream;
+                        videoRef.current.play().catch(e => console.error("Error playing video:", e));
+                    }
+                }
+            }, [cameraStream, currentPage]);
+
+            // Fallback image upload for HP / Laptop if the camera remains black or is blocked by iframe constraints
+            const handleFallbackImageUpload = (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const dataUrl = event.target && event.target.result;
+                    if (!dataUrl) return;
+
+                    const newPhoto = {
+                        id: 'photo_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                        dataUrl: dataUrl,
+                        timestamp: new Date().toLocaleTimeString('id-ID'),
+                        selected: false
+                    };
+
+                    setGalleryPhotos(prev => [newPhoto, ...prev]);
+
+                    // Place image inside the active photo slot automatically
+                    setSessionPlacements(prev => {
+                        const next = [...prev];
+                        next[activeSlotIndex] = {
+                            ...next[activeSlotIndex],
+                            photoId: newPhoto.id
+                        };
+                        return next;
+                    });
+
+                    // Stagger and advance the slot guide
+                    setActiveSlotIndex(prev => (prev + 1) % selectedTemplate.slotsCount);
+                };
+                reader.readAsDataURL(file);
+            };
+
+            // Submit record logs to google sheets
+            const submitToGoogleSheets = async (name) => {
+                if (!sheetsUrl || !sheetsUrl.startsWith('http')) return;
+                const payload = {
+                    nama: name,
+                    tanggal: new Date().toLocaleString('id-ID'),
+                    device: navigator.userAgent
+                };
+                try {
+                    await fetch(sheetsUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (e) {
+                    console.error("Sheet submit failed", e);
+                }
+            };
+
+            // Authenticate and login submission
+            const handleLoginSubmit = (e) => {
+                e.preventDefault();
+                if (!userName.trim()) return;
+                localStorage.setItem('user_name', userName.trim());
+                localStorage.setItem('sheets_url', sheetsUrl.trim());
+                setIsLoggedIn(true);
+                submitToGoogleSheets(userName.trim());
+                setCurrentPage('booth');
+            };
+
+            const handleLogOut = () => {
+                localStorage.removeItem('user_name');
+                setUserName('');
+                setIsLoggedIn(false);
+                setCurrentPage('login');
+                stopCamera();
+            };
+
+            // Capture raw photo from stream
+            const captureShutter = () => {
+                if (!cameraActive || !videoRef.current) return;
+                
+                if (timerDuration > 0) {
+                    setIsShootingSession(true);
+                    setCountdown(timerDuration);
+                    const interval = setInterval(() => {
+                        setCountdown((prev) => {
+                            if (prev <= 1) {
+                                clearInterval(interval);
+                                executeActualCapture();
+                                return -1;
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
+                } else {
+                    executeActualCapture();
+                }
+            };
+
+            const executeActualCapture = () => {
+                if (!videoRef.current) return;
+                const canvas = document.createElement('canvas');
+                // Capture at high resolution
+                canvas.width = 1200;
+                canvas.height = 900;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+                
+                // Mirror horizontally to match normal live selfie preview!
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // reset transform
+                
+                // Show flashy white visual indicator
+                setShowFlash(true);
+                setTimeout(() => setShowFlash(false), 200);
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                const newPhoto = {
+                    id: 'photo_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+                    dataUrl: dataUrl,
+                    timestamp: new Date().toLocaleTimeString()
+                };
+
+                setGalleryPhotos((prev) => [newPhoto, ...prev]);
+
+                // Place inside selected template slot
+                setSessionPlacements((prev) => {
+                    const next = [...prev];
+                    next[activeSlotIndex] = { ...next[activeSlotIndex], photoId: newPhoto.id };
+                    return next;
+                });
+
+                // Auto shift to next slot
+                setActiveSlotIndex((prev) => (prev + 1) % selectedTemplate.slotsCount);
+                setIsShootingSession(false);
+            };
+
+            // Custom positioning mechanics
+            const updatePlacement = (slotIdx, field, val) => {
+                setSessionPlacements((prev) => {
+                    const next = [...prev];
+                    next[slotIdx] = { ...next[slotIdx], [field]: val };
+                    return next;
+                });
+            };
+
+            const changeZoom = (mult) => {
+                const cur = sessionPlacements[activeSlotIndex].scale;
+                let next = cur + mult;
+                if (next < 0.2) next = 0.2;
+                if (next > 4) next = 4;
+                updatePlacement(activeSlotIndex, 'scale', parseFloat(next.toFixed(2)));
+            };
+
+            const changePan = (axis, amount) => {
+                const currentVal = sessionPlacements[activeSlotIndex][axis];
+                updatePlacement(activeSlotIndex, axis, currentVal + amount);
+            };
+
+            const changeRotate = (deg) => {
+                const currentVal = sessionPlacements[activeSlotIndex].rotation;
+                updatePlacement(activeSlotIndex, 'rotation', (currentVal + deg) % 360);
+            };
+
+            const selectPhotoForActiveSlot = (photoId) => {
+                setSessionPlacements((prev) => {
+                    const next = [...prev];
+                    next[activeSlotIndex] = { ...next[activeSlotIndex], photoId };
+                    return next;
+                });
+            };
+
+            const removePhotoFromSlot = (slotIdx) => {
+                setSessionPlacements((prev) => {
+                    const next = [...prev];
+                    next[slotIdx] = { ...next[slotIdx], photoId: null };
+                    return next;
+                });
+            };
+
+            const deleteGalleryPhoto = (id, e) => {
+                if (e) e.stopPropagation();
+                if (confirm("Hapus foto dari galeri?")) {
+                    setGalleryPhotos((prev) => prev.filter(p => p.id !== id));
+                    setSessionPlacements((prev) => prev.map(p => p.photoId === id ? { ...p, photoId: null } : p));
+                }
+            };
+
+            // Canvas renderer to merge selected compositions with beautiful backgrounds
+            const generateAndDownloadComposite = (targetTemplate, placements, bypassDownload = false) => {
+                return new Promise((resolve) => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 800;
+                    canvas.height = 1200; // Classic 2:3 physical photostrip ratio 
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) { resolve(null); return; }
+
+                    // Fill beautiful solid white vintage backing
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    let loadedCount = 0;
+                    const filledPlacements = placements.filter(p => p.photoId);
+
+                    const finishAndBuild = () => {
+                        const templateImg = new Image();
+                        templateImg.crossOrigin = 'anonymous';
+                        templateImg.src = targetTemplate.url;
+                        
+                        templateImg.onload = () => {
+                            ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
+                            // Add copyright watermarks
+                            ctx.font = 'bold 20px "Playfair Display"';
+                            ctx.fillStyle = '#C05C23';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(`JULIEFY LENS © ${new Date().getFullYear()}`, canvas.width / 2, canvas.height - 25);
+
+                            const mergedUrl = canvas.toDataURL('image/png');
+                            if (!bypassDownload) {
+                                const link = document.createElement('a');
+                                link.download = `photostrip_juliefy_${Date.now()}.png`;
+                                link.href = mergedUrl;
+                                link.click();
+                            }
+                            resolve(mergedUrl);
+                        };
+
+                        templateImg.onerror = () => {
+                            // High quality golden vectors as safety fallback when Google CORS gets blocked!
+                            ctx.strokeStyle = '#D27D2D';
+                            ctx.lineWidth = 14;
+                            ctx.strokeRect(8, 8, canvas.width - 16, canvas.height - 16);
+                            
+                            ctx.fillStyle = '#4a0303'; // red velvet
+                            ctx.fillRect(14, 14, canvas.width - 28, 85);
+
+                            ctx.fillStyle = '#fef08a';
+                            ctx.font = 'bold italic 30px "Playfair Display"';
+                            ctx.textAlign = 'center';
+                            ctx.fillText("JULIEFY RETRO LENS", canvas.width / 2, 65);
+
+                            ctx.fillStyle = '#D27D2D';
+                            ctx.fillRect(14, canvas.height - 65, canvas.width - 28, 4);
+
+                            ctx.fillStyle = '#555555';
+                            ctx.font = 'bold 15px "JetBrains Mono"';
+                            ctx.fillText(`NAMA: ${userName.toUpperCase()} | ${new Date().toLocaleDateString('id-ID')}`, canvas.width / 2, canvas.height - 28);
+
+                            const mergedUrl = canvas.toDataURL('image/png');
+                            if (!bypassDownload) {
+                                const link = document.createElement('a');
+                                link.download = `photostrip_fallback_${Date.now()}.png`;
+                                link.href = mergedUrl;
+                                link.click();
+                            }
+                            resolve(mergedUrl);
+                        };
+                    };
+
+                    if (filledPlacements.length === 0) {
+                        finishAndBuild();
+                        return;
+                    }
+
+                    // Render individual slots
+                    placements.forEach((placement, idx) => {
+                        const slot = targetTemplate.slots[idx];
+                        if (!slot || !placement.photoId) return;
+
+                        const photoData = galleryPhotos.find(p => p.id === placement.photoId);
+                        if (!photoData) {
+                            loadedCount++;
+                            if (loadedCount === filledPlacements.length) finishAndBuild();
+                            return;
+                        }
+
+                        const img = new Image();
+                        img.src = photoData.dataUrl;
+                        img.onload = () => {
+                            const sx = (slot.x / 100) * canvas.width;
+                            const sy = (slot.y / 100) * canvas.height;
+                            const sw = (slot.width / 100) * canvas.width;
+                            const sh = (slot.height / 100) * canvas.height;
+
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.rect(sx, sy, sw, sh);
+                            ctx.clip(); // clip outer layout boundary
+
+                            const cx = sx + sw / 2;
+                            const cy = sy + sh / 2;
+
+                            ctx.translate(cx, cy);
+                            ctx.rotate((placement.rotation * Math.PI) / 180);
+                            
+                            // Aspect ratio fitting calculations
+                            const imgAspect = img.width / img.height;
+                            const slotAspect = sw / sh;
+                            let renderW, renderH;
+
+                            if (imgAspect > slotAspect) {
+                                renderH = sh * placement.scale;
+                                renderW = renderH * imgAspect;
+                            } else {
+                                renderW = sw * placement.scale;
+                                renderH = renderW / imgAspect;
+                            }
+
+                            ctx.drawImage(
+                                img, 
+                                -renderW / 2 + placement.xOffset, 
+                                -renderH / 2 + placement.yOffset, 
+                                renderW, 
+                                renderH
+                            );
+                            ctx.restore();
+
+                            loadedCount++;
+                            if (loadedCount === filledPlacements.length) finishAndBuild();
+                        };
+                        
+                        img.onerror = () => {
+                            loadedCount++;
+                            if (loadedCount === filledPlacements.length) finishAndBuild();
+                        };
+                    });
+                });
+            };
+
+            return (
+                <div className={`min-h-screen text-stone-100 font-sans select-none selection:bg-amber-850 ${
+                    ['login', 'booth', 'gallery'].includes(currentPage) ? 'bg-velvet' : 'bg-sky-teal'
+                }`}>
+                    {/* LOGIN CARD SCREEN */}
+                    {currentPage === 'login' && (
+                        <div className="fixed inset-0 bg-velvet flex items-center justify-center p-4 overflow-y-auto">
+                            <div className="w-full max-w-sm bg-[#c2410c]/20 border border-yellow-600/20 rounded-3xl p-1 shadow-2xl relative">
+                                
+                                {/* Camera graphics illustration */}
+                                <div className="relative h-60 bg-gradient-to-br from-[#fef08a] to-[#f59e0b] overflow-hidden flex flex-col items-center justify-center rounded-t-3xl border-b-4 border-amber-900/60 shadow-inner">
+                                    <div className="relative z-10 w-32 h-24 bg-gradient-to-b from-stone-200 to-stone-400 rounded-2xl border-4 border-stone-800 shadow-xl flex flex-col justify-between p-1.5">
+                                        <div className="flex justify-between items-center">
+                                            <div className="w-6 h-1.5 bg-[#B85C24] rounded-sm"></div>
+                                            <div className="flex space-x-1">
+                                                <div className="w-3 h-3 bg-stone-700 rounded-full"></div>
+                                                <div className="w-4 h-2 bg-stone-800 rounded-sm"></div>
+                                            </div>
+                                        </div>
+                                        <div className="self-center w-16 h-16 rounded-full bg-gradient-to-r from-stone-800 to-stone-900 border-4 border-stone-300 flex items-center justify-center shadow-lg">
+                                            <div className="w-10 h-10 rounded-full bg-sky-950 border-2 border-stone-500 flex items-center justify-center">
+                                                <div className="w-4 h-4 rounded-full bg-sky-400/30"></div>
+                                            </div>
+                                        </div>
+                                        <div className="w-full text-center text-[8px] font-bold text-stone-700 tracking-widest font-mono">RETRO FRAME</div>
+                                    </div>
+                                    <div className="absolute bottom-2 bg-[#451a03]/80 px-4 py-1 rounded-full text-xs text-yellow-300 border border-yellow-500/30 font-semibold">RETRO PHOTOCARDS</div>
+                                </div>
+
+                                {/* Login Input form (Sheet link hidden) */}
+                                <form onSubmit={handleLoginSubmit} className="bg-[#B85C24] p-6 rounded-b-[22px] space-y-5 text-center relative">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-amber-50 font-serif text-lg tracking-wider">Nama:</label>
+                                        <input 
+                                            type="text"
+                                            required
+                                            value={userName}
+                                            onChange={(e) => setUserName(e.target.value)}
+                                            placeholder="Ketik nama anda..."
+                                            className="w-full text-center px-4 py-3 bg-white text-stone-900 font-bold rounded-full shadow-inner tracking-wide focus:outline-none focus:ring-4 focus:ring-amber-300"
+                                        />
+                                    </div>
+
+                                    <button 
+                                        type="submit" 
+                                        className="w-full font-bold text-white text-lg rounded-full py-3.5 shadow-lg active:scale-95 transition-all text-center uppercase tracking-widest cursor-pointer btn-red-3d"
+                                    >
+                                        Masuk
+                                    </button>
+
+                                    <div className="pt-2 relative">
+                                        <h2 className="text-stone-100 text-3xl font-extrabold font-serif italic tracking-wide">Juliefy <span className="font-sans font-light not-italic tracking-[0.4em] text-xs uppercase block text-center mt-1 text-amber-200">L e n s</span></h2>
+                                    </div>
+                                </form>
+                                               {/* PHOTO BOOTH SCREEN */}
+                    {currentPage === 'booth' && (
+                        <div className="max-w-7xl mx-auto px-4 py-6">
+                            {/* Main interface grids */}
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                
+                                {/* LEFT ROW: Template Shelf displaying actual layout blueprints */}
+                                <div className="lg:col-span-3 bg-stone-950/60 rounded-3xl p-4 border border-stone-800 shadow-2xl flex flex-col space-y-4">
+                                    <div className="border border-yellow-600/30 rounded-2xl overflow-hidden shadow-md">
+                                        <div className="bg-[#7c2d12] text-center py-2 px-4 text-white font-serif text-lg tracking-widest font-semibold border-b border-yellow-600/40">
+                                            Template
+                                        </div>
+                                        <div className="p-3 bg-amber-950/10 grid grid-cols-2 gap-3 max-h-[340px] overflow-y-auto">
+                                            {templates.map((t) => (
+                                                <button
+                                                    key={t.id}
+                                                    onClick={() => setSelectedTemplate(t)}
+                                                    className={`relative w-full bg-stone-950 border-2 rounded-2xl overflow-hidden transition-all duration-300 group cursor-pointer flex flex-col justify-between p-1.5 ${
+                                                        selectedTemplate.id === t.id 
+                                                            ? 'border-yellow-400 scale-[1.03] shadow-lg shadow-yellow-500/20' 
+                                                            : 'border-stone-850 hover:border-stone-700 hover:scale-[1.01]'
+                                                    }`}
+                                                >
+                                                    {/* Layout schematic slots */}
+                                                    <div className="relative w-full bg-stone-900 rounded-lg border border-stone-800/40 overflow-hidden">
+                                                        {t.slots.map((slot, sIdx) => (
+                                                            <div 
+                                                                key={sIdx}
+                                                                className={`absolute border rounded-[1px] transition ${
+                                                                    selectedTemplate.id === t.id 
+                                                                        ? 'border-yellow-500/25 bg-yellow-500/10' 
+                                                                        : 'border-stone-700/20 bg-stone-800/25'
+                                                                }`}
+                                                                style={{
+                                                                    left: `${slot.x}%`,
+                                                                    top: `${slot.y}%`,
+                                                                    width: `${slot.width}%`,
+                                                                    height: `${slot.height}%`
+                                                                }}
+                                                            />
+                                                        ))}
+                                                        {/* Visual overlay of the actual frame illustration PNG with transparent holes using original scaling block */}
+                                                        <img 
+                                                            src={t.url} 
+                                                            alt={t.name}
+                                                            className="relative w-full h-auto z-20 pointer-events-none block"
+                                                            referrerPolicy="no-referrer"
+                                                        />
+                                                    </div>
+                                                    <div className="mt-1 text-center font-mono leading-tight w-full">
+                                                        <div className="text-[9px] font-bold text-stone-300 truncate group-hover:text-yellow-400">{t.name.split(' (')[0]}</div>
+                                                        <div className="text-amber-500 text-[8px] font-semibold">({t.slotsCount} Slot)</div>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Real-time miniature slot tracker */}
+                                    <div className="bg-stone-900/90 rounded-2xl p-4 border border-stone-800 space-y-3.5 shadow-md">
+                                        <div className="flex justify-between items-center font-mono">
+                                            <h3 className="text-xs font-bold text-yellow-400 tracking-wider font-mono">SLOT TRACKER</h3>
+                                            <span className="text-[10px] bg-yellow-950 text-yellow-300 px-2 py-0.5 rounded border border-yellow-700/40 font-bold font-mono">
+                                                SLOT {activeSlotIndex + 1}/{selectedTemplate.slotsCount}
+                                            </span>
+                                        </div>
+                                        <div className="relative w-36 mx-auto bg-stone-950 rounded-xl overflow-hidden border border-stone-850 shadow-xl">
+                                            {sessionPlacements.map((placement, idx) => {
+                                                const slot = selectedTemplate.slots[idx];
+                                                if (!slot) return null;
+                                                const photo = galleryPhotos.find(p => p.id === placement.photoId);
+                                                return (
+                                                    <div 
+                                                        key={idx}
+                                                        style={{
+                                                            left: `${slot.x}%`,
+                                                            top: `${slot.y}%`,
+                                                            width: `${slot.width}%`,
+                                                            height: `${slot.height}%`
+                                                        }}
+                                                        onClick={() => setActiveSlotIndex(idx)}
+                                                        className={`absolute border transition-all cursor-pointer overflow-hidden flex items-center justify-center z-10 ${
+                                                            idx === activeSlotIndex 
+                                                                ? 'border-yellow-400 bg-yellow-400/25 ring-2 ring-yellow-400/50' 
+                                                                : 'border-stone-700 bg-stone-800/10 hover:bg-stone-800/30'
+                                                        }`}
+                                                    >
+                                                        {photo ? (
+                                                            <img src={photo.dataUrl} className="w-full h-full object-cover pointer-events-none" referrerPolicy="no-referrer" />
+                                                        ) : (
+                                                            <span className="text-[9px] font-bold font-mono text-stone-500">{idx + 1}</span>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                            {/* Decorative transparent frame layout overlay mask rendering in its native aspect-ratio flow */}
+                                            <img 
+                                                src={selectedTemplate.url} 
+                                                alt="Active template design overlay"
+                                                className="relative w-full h-auto z-20 pointer-events-none block"
+                                                referrerPolicy="no-referrer"
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-center text-stone-400">Klik slot di atas untuk memilih slot mana yang akan diisi foto baru.</p>
+                                    </div>
+                                </div>
+
+                                {/* CENTER ROW: Camera View with Static Cinema Marquees */}
+                                <div className="lg:col-span-6 flex flex-col items-center space-y-6">
+                                    <div className="w-full max-w-xl bg-[#5f0404] p-6 rounded-3xl border-4 border-yellow-400 shadow-[0_15px_30px_rgba(0,0,0,0.6)] relative overflow-hidden">
+                                        
+                                        {/* Pure Static cinema bulbs wrapper (lightweight, zero lag!) */}
+                                        <div className="absolute inset-0 p-1 pointer-events-none rounded-[22px] overflow-hidden">
+                                            <div className="absolute top-1 inset-x-1 flex justify-between px-3">
+                                                {Array(13).fill(null).map((_, i) => (
+                                                    <div key={`t-${i}`} className="w-2.5 h-2.5 rounded-full bg-yellow-300 border border-yellow-500/30 shadow-[0_0_4px_rgba(253,224,71,0.6)]"></div>
+                                                ))}
+                                            </div>
+                                            <div className="absolute left-1 inset-y-6 flex flex-col justify-between py-1">
+                                                {Array(8).fill(null).map((_, i) => (
+                                                    <div key={`l-${i}`} className="w-2.5 h-2.5 rounded-full bg-yellow-300 border border-yellow-500/30 shadow-[0_0_4px_rgba(253,224,71,0.6)]"></div>
+                                                ))}
+                                            </div>
+                                            <div className="absolute right-1 inset-y-6 flex flex-col justify-between py-1">
+                                                {Array(8).fill(null).map((_, i) => (
+                                                    <div key={`r-${i}`} className="w-2.5 h-2.5 rounded-full bg-yellow-300 border border-yellow-500/30 shadow-[0_0_4px_rgba(253,224,71,0.6)]"></div>
+                                                ))}
+                                            </div>
+                                            <div className="absolute bottom-1 inset-x-1 flex justify-between px-3">
+                                                {Array(13).fill(null).map((_, i) => (
+                                                    <div key={`b-${i}`} className="w-2.5 h-2.5 rounded-full bg-yellow-300 border border-yellow-500/30 shadow-[0_0_4px_rgba(253,224,71,0.6)]"></div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Camera feed area */}
+                                        <div className="aspect-video bg-black rounded-xl overflow-hidden border-2 border-stone-800 relative shadow-inner">
+                                            {cameraActive ? (
+                                                <video 
+                                                    ref={videoRef}
+                                                    autoPlay
+                                                    playsInline
+                                                    muted
+                                                    className="w-full h-full object-cover scale-x-[-1]"
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-3 bg-stone-950">
+                                                    {cameraError ? (
+                                                        <div className="space-y-3 text-stone-300 max-w-sm">
+                                                            <p className="text-red-400 font-bold text-sm">Gagal Mengakses Kamera</p>
+                                                            <p className="text-xs text-stone-300 bg-black/60 p-2 rounded-lg border border-red-500/20">{cameraError}</p>
+                                                            <div className="text-left text-[11px] text-stone-400 leading-relaxed bg-stone-900/60 p-2.5 rounded-lg border border-stone-800">
+                                                                <span className="font-semibold text-yellow-500">SOLUSI:</span> Pastikan izin akses kamera diberikan di peramban Anda. Klik <strong className="text-white">"Coba Lagi"</strong> atau atur izin kamera ke "Izinkan" melalui bar alamat peramban Anda.
+                                                            </div>
+                                                            <div className="flex justify-center gap-2 pt-1">
+                                                                <button 
+                                                                    onClick={() => startCamera(selectedCameraId)}
+                                                                    className="bg-[#B85C24] hover:bg-orange-600 text-white font-bold text-xs px-4 py-2 rounded-full shadow-md transition-colors inline-flex items-center space-x-1"
+                                                                >
+                                                                    <RefreshCw size={12} className="mr-1" />
+                                                                    <span>Coba Lagi</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="animate-pulse space-y-2 text-stone-500">
+                                                            <Camera size={40} className="mx-auto" />
+                                                            <p className="text-xs font-mono">Menunggu Kamera ...</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Flash screen indicator */}
+                                            {showFlash && (
+                                                <div className="absolute inset-0 bg-white pointer-events-none z-40 transition-opacity duration-100 opacity-100" />
+                                            )}
+
+                                            {/* Countdown overlay */}
+                                            {countdown > 0 && (
+                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-35 backdrop-blur-sm">
+                                                    <span className="text-8xl font-black text-yellow-400 serif-font animate-bounce drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]">{countdown}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Action control bar */}
+                                        <div className="mt-5 flex flex-wrap justify-between items-center gap-4">
+                                            <div className="flex items-center space-x-3 w-full sm:w-auto">
+                                                <select 
+                                                    value={timerDuration}
+                                                    onChange={(e) => setTimerDuration(parseInt(e.target.value))}
+                                                    className="bg-stone-900 text-stone-200 text-xs px-3 py-2 rounded-lg border border-stone-750 font-bold focus:outline-none focus:ring-1 focus:ring-yellow-400 cursor-pointer"
+                                                >
+                                                    <option value={0}>Timer: Mati</option>
+                                                    <option value={3}>Timer: 3 dtk</option>
+                                                    <option value={5}>Timer: 5 dtk</option>
+                                                    <option value={10}>Timer: 10 dtk</option>
+                                                </select>
+
+                                                {/* Compact Camera Select Dropdown matching App.tsx */}
+                                                {availableDevices.length > 0 && (
+                                                    <select 
+                                                        value={selectedCameraId}
+                                                        onChange={(e) => { setSelectedCameraId(e.target.value); startCamera(e.target.value); }}
+                                                        className="bg-stone-900 text-stone-300 text-xs px-3 py-2 rounded-lg border border-stone-750 font-bold focus:outline-none cursor-pointer"
+                                                    >
+                                                        {availableDevices.map(d => (
+                                                            <option key={d.deviceId} value={d.deviceId}>{d.label || `Kamera ${d.deviceId.slice(0, 5)}`}</option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                            </div>
+
+                                            {/* Main Big Capture Trigger Button - Perfect Circle */}
+                                            <button 
+                                                onClick={captureShutter}
+                                                disabled={!cameraActive || isShootingSession}
+                                                className={`w-16 h-16 rounded-full border-4 border-red-800 active:scale-95 transition cursor-pointer flex items-center justify-center ${
+                                                    cameraActive && !isShootingSession 
+                                                        ? 'bg-red-600 hover:bg-red-500 shadow-lg shadow-red-600/30' 
+                                                        : 'bg-stone-800 opacity-40 cursor-not-allowed'
+                                                }`}
+                                                title="Shutter"
+                                            >
+                                                <div className="w-8 h-8 rounded-full bg-red-500 shadow-inner" />
+                                            </button>
+
+                                            <div className="text-stone-400 text-xs text-right hidden lg:block font-mono">
+                                                Slot aktif: <span className="font-bold text-yellow-400 font-mono">Slot {activeSlotIndex + 1}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Manual pivot positioner widget */}
+                                    <div className="w-full max-w-xl bg-stone-900/90 rounded-2xl p-4 border border-stone-800 space-y-4 shadow-xl">
+                                        <div className="flex justify-between items-center">
+                                            <div className="flex items-center space-x-1.5 text-yellow-400">
+                                                <Sliders size={14} />
+                                                <h4 className="text-xs font-bold uppercase tracking-wider font-mono">Penyelarasan Foto (Slot {activeSlotIndex + 1})</h4>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    updatePlacement(activeSlotIndex, 'scale', 1);
+                                                    updatePlacement(activeSlotIndex, 'xOffset', 0);
+                                                    updatePlacement(activeSlotIndex, 'yOffset', 0);
+                                                    updatePlacement(activeSlotIndex, 'rotation', 0);
+                                                }}
+                                                className="text-[10px] hover:text-white text-stone-400 underline font-mono cursor-pointer"
+                                            >
+                                                Reset Pivot
+                                            </button>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-[11px] font-mono text-stone-400">
+                                                    <span>Skala Zoom: {sessionPlacements[activeSlotIndex]?.scale || 1}x</span>
+                                                    <span>(0.2x hingga 4.0x)</span>
+                                                </div>
+                                                <div className="flex space-x-2">
+                                                    <button onClick={() => changeZoom(0.1)} className="flex-1 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 rounded text-xs flex items-center justify-center space-x-1">
+                                                        <ZoomIn size={12} /> <span>Zoom In (+0.1)</span>
+                                                    </button>
+                                                    <button onClick={() => changeZoom(-0.1)} className="flex-1 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 rounded text-xs flex items-center justify-center space-x-1">
+                                                        <ZoomOut size={12} /> <span>Zoom Out (-0.1)</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <span className="block text-[11px] font-mono text-stone-400">Rotasi Kemiringan: {sessionPlacements[activeSlotIndex]?.rotation || 0}°</span>
+                                                <div className="flex flex-col space-y-1">
+                                                    <div className="flex space-x-1">
+                                                        <button onClick={() => changeRotate(-90)} className="flex-1 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 rounded text-xs">
+                                                            -90° Kiri
+                                                        </button>
+                                                        <button onClick={() => changeRotate(90)} className="flex-1 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 rounded text-xs">
+                                                            +90° Kanan
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex space-x-1">
+                                                        <button onClick={() => changeRotate(-5)} className="flex-1 py-0.5 bg-stone-905 hover:bg-stone-800 text-stone-300 border border-stone-800 rounded text-[10px]">
+                                                            -5° Miring
+                                                        </button>
+                                                        <button onClick={() => changeRotate(5)} className="flex-1 py-0.5 bg-stone-905 hover:bg-stone-800 text-stone-300 border border-stone-800 rounded text-[10px]">
+                                                            +5° Miring
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2 pt-1 border-t border-stone-850">
+                                            <span className="block text-[11px] font-mono text-stone-400 text-center sm:text-left">Geser Lokasi Foto (Pan Posisional):</span>
+                                            <div className="flex justify-center sm:justify-start gap-1 pb-1">
+                                                <button onClick={() => changePan('yOffset', -10)} className="w-16 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 rounded text-xs">▲ Atas</button>
+                                                <button onClick={() => changePan('yOffset', 10)} className="w-16 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 rounded text-xs">▼ Bawah</button>
+                                                <button onClick={() => changePan('xOffset', -10)} className="w-16 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 rounded text-xs">◀ Kiri</button>
+                                                <button onClick={() => changePan('xOffset', 10)} className="w-16 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 rounded text-xs">▶ Kanan</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* RIGHT ROW: Quick Session Gallery shelf */}
+                                <div className="lg:col-span-3 bg-stone-950/60 rounded-3xl p-4 border border-stone-800 shadow-2xl space-y-4">
+                                    <button 
+                                        onClick={() => setCurrentPage('gallery')} 
+                                        className="w-full py-3 text-white font-bold text-center rounded-2xl btn-cyan-3d tracking-wider flex items-center justify-center space-x-2"
+                                    >
+                                        <span>Buka Galeri Penuh</span>
+                                        <ArrowRight size={14} />
+                                    </button>
+
+                                    <div className="bg-stone-900/90 rounded-2xl p-4 border border-stone-800 space-y-3 shadow-md">
+                                        <div className="flex justify-between items-center pb-2 border-b border-stone-800">
+                                            <h4 className="text-xs font-bold font-mono text-stone-300">HASIL POTRETAN ({galleryPhotos.length})</h4>
+                                        </div>
+                                        {galleryPhotos.length === 0 ? (
+                                            <p className="text-center py-6 text-xs text-stone-500 font-mono">Belum ada foto. Silakan memotret beberapa foto diatas!</p>
+                                        ) : (
+                                            <div className="grid grid-cols-2 gap-2 h-72 overflow-y-auto pr-1">
+                                                {galleryPhotos.map((p) => (
+                                                    <div 
+                                                        key={p.id}
+                                                        onClick={() => selectPhotoForActiveSlot(p.id)}
+                                                        className="group relative aspect-[4/3] rounded-lg overflow-hidden border border-stone-800 hover:border-yellow-400 cursor-pointer shadow"
+                                                        title="Klik untuk pasang di slot aktif"
+                                                    >
+                                                        <img src={p.dataUrl} className="w-full h-full object-cover" />
+                                                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-[9px] text-yellow-300 font-bold">
+                                                            Pasang di Slot
+                                                        </div>
+                                                        <button 
+                                                            onClick={(e) => deleteGalleryPhoto(p.id, e)}
+                                                            className="absolute top-1 right-1 bg-red-600 hover:bg-red-500 p-1 rounded"
+                                                        >
+                                                            <Trash2 size={10} className="text-white" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action button triggers download strip */}
+                                    <div className="space-y-2">
+                                        <button 
+                                            onClick={() => generateAndDownloadComposite(selectedTemplate, sessionPlacements)}
+                                            className="w-full py-4 text-white font-bold text-center rounded-2xl btn-red-3d tracking-wider uppercase flex items-center justify-center space-x-2"
+                                        >
+                                            <Download size={16} />
+                                            <span>Download Photostrip</span>
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                if (confirm("Reset ulang seluruh pasang slot?")) {
+                                                    setSessionPlacements(Array(selectedTemplate.slotsCount).fill(null).map(() => ({ photoId: null, scale: 1, xOffset: 0, yOffset: 0, rotation: 0 })));
+                                                    setActiveSlotIndex(0);
+                                                }
+                                            }}
+                                            className="w-full py-2 bg-stone-800 hover:bg-stone-700 text-stone-400 text-xs font-bold rounded-lg border border-stone-700 transition"
+                                        >
+                                            Bersihkan Slot Frame
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* BULK GALLERY PAGE SCREEN */}
+                    {currentPage === 'gallery' && (
+                        <div className="max-w-7xl mx-auto px-4 py-8">
+                            <div className="flex justify-between items-center bg-stone-900 p-4 rounded-2xl border border-stone-800 mb-6 flex-wrap gap-4">
+                                <div className="flex items-center space-x-2">
+                                    <h2 className="text-xl font-bold font-serif text-yellow-400">Pustaka Galeri Foto</h2>
+                                </div>
+                                <div className="flex items-center space-x-2 flex-wrap gap-2">
+                                    <button 
+                                        onClick={() => setCurrentPage('booth')}
+                                        className="px-4 py-2 bg-[#B85C24] hover:bg-orange-600 text-white font-bold text-xs rounded-lg transition"
+                                    >
+                                        Kembali ke Booth
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            if (confirm("Hapus semua foto?")) {
+                                                setGalleryPhotos([]);
+                                                setSessionPlacements(prev => prev.map(p => ({ ...p, photoId: null })));
+                                            }
+                                        }}
+                                        className="px-4 py-2 bg-red-800 hover:bg-red-700 text-red-200 text-xs font-bold rounded-lg border border-red-900"
+                                    >
+                                        Bersihkan Semua
+                                    </button>
+                                </div>
+                            </div>
+
+                            {galleryPhotos.length === 0 ? (
+                                <div className="bg-stone-950 p-12 rounded-3xl border border-stone-850 text-center text-stone-500 max-w-md mx-auto space-y-3">
+                                    <ImageIcon size={48} className="mx-auto text-stone-700" />
+                                    <p className="font-serif italic text-sm">Galeri masih kosong. Silakan masuk ke Booth dan potret momen terbaik Anda!</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                    {galleryPhotos.map((p) => (
+                                        <div key={p.id} className="bg-stone-900 border border-stone-800 p-2 rounded-xl flex flex-col justify-between relative group hover:border-yellow-500 transition shadow">
+                                            <div className="relative aspect-square overflow-hidden rounded-lg bg-black-80">
+                                                <img src={p.dataUrl} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="mt-2 flex justify-between items-center">
+                                                <span className="text-[10px] font-mono text-stone-500">{p.timestamp}</span>
+                                                <button 
+                                                    onClick={(e) => deleteGalleryPhoto(p.id, e)}
+                                                    className="p-1.5 bg-stone-950 text-red-400 hover:text-red-300 rounded border border-stone-800"
+                                                    title="Hapus"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ABOUT PAGE SCREEN */}
+                    {currentPage === 'about' && (
+                        <div className="max-w-2xl mx-auto px-6 py-12">
+                            <div className="bg-stone-900 p-8 rounded-3xl border border-stone-800 space-y-6 shadow-2xl">
+                                <h2 className="text-3xl font-bold font-serif text-transparent bg-clip-text bg-gradient-to-r from-yellow-100 to-amber-400">Tentang Juliefy Lens</h2>
+                                <div className="space-y-4 text-stone-300 text-sm leading-relaxed">
+                                    <p>Juliefy Lens adalah studio photobooth digital yang menggabungkan estetika retro klasik dengan kepraktisan teknologi modern, dirancang sebagai single-page app 100% mandiri yang berjalan lancar di peramban tanpa server.</p>
+                                    <p>Memiliki penyesuaian sumbu letak foto (zooming dan panning) pada masing-masing slot frame untuk memberikan Anda fleksibilitas pengaturan estetika terbaik.</p>
+                                </div>
+                                <button onClick={() => setCurrentPage(isLoggedIn ? 'booth' : 'login')} className="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-500 text-stone-950 font-bold text-xs rounded-xl">
+                                    Tutup & Kembali
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* HELP PAGE SCREEN */}
+                    {currentPage === 'help' && (
+                        <div className="max-w-2xl mx-auto px-6 py-12">
+                            <div className="bg-stone-900 p-8 rounded-3xl border border-stone-800 space-y-6 shadow-2xl">
+                                <h2 className="text-3xl font-bold font-serif text-transparent bg-clip-text bg-gradient-to-r from-yellow-105 to-yellow-300">Cara Menggunakan</h2>
+                                <div className="space-y-4 text-stone-300 text-xs sm:text-sm leading-relaxed">
+                                    <ol className="list-decimal pl-5 space-y-3">
+                                        <li><strong className="text-white">Masukan Nama:</strong> Ketik nama Anda di halaman login untuk memulai sesi photobooth Anda.</li>
+                                        <li><strong className="text-white">Pilih Template:</strong> Ketuk template photostrip di bilah samping kiri untuk memilih jumlah slot and format.</li>
+                                        <li><strong className="text-white">Memotret / Mengisi Slot:</strong> Klik tombol bundar merah di tengah untuk menjepret. Foto akan secara otomatis masuk ke slot aktif Anda.</li>
+                                        <li><strong className="text-white">Atur Lokasi (Pivot):</strong> Gunakan tombol Zoom In/Out, Putar, dan Geser di bilah penyesuaian di bawah kamera untuk menyempurnakan letak potret.</li>
+                                        <li><strong className="text-white">Download Strip:</strong> Jika slot sudah terisi penuh, klik "Download Photostrip" untuk mengekspor file PNG berkualitas tinggi ke galeri lokal Anda!</li>
+                                    </ol>
+                                </div>
+                                <button onClick={() => setCurrentPage(isLoggedIn ? 'booth' : 'login')} className="px-5 py-2.5 bg-yellow-600 hover:bg-yellow-500 text-stone-950 font-bold text-xs rounded-xl">
+                                    Tutup & Kembali
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
